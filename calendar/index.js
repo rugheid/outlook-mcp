@@ -60,7 +60,7 @@ const calendarTools = [
   },
   {
     name: "create-event",
-    description: "Creates a new calendar event",
+    description: "Creates a new calendar event (one-time or recurring)",
     inputSchema: {
       type: "object",
       properties: {
@@ -90,6 +90,79 @@ const calendarTools = [
         body: {
           type: "string",
           description: "Optional body content for the event"
+        },
+        recurrence: {
+          type: "object",
+          description: "Recurrence pattern for the event (optional). If not provided, creates a one-time event.",
+          properties: {
+            pattern: {
+              type: "object",
+              description: "The recurrence pattern",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["daily", "weekly", "absoluteMonthly", "relativeMonthly", "absoluteYearly", "relativeYearly"],
+                  description: "The recurrence pattern type"
+                },
+                interval: {
+                  type: "number",
+                  description: "Number of units between occurrences (e.g., 1 for every day, 2 for every other week)"
+                },
+                daysOfWeek: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                    enum: ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                  },
+                  description: "Days of the week for weekly recurrence"
+                },
+                dayOfMonth: {
+                  type: "number",
+                  description: "Day of the month (1-31) for monthly recurrence"
+                },
+                month: {
+                  type: "number",
+                  description: "Month (1-12) for yearly recurrence"
+                },
+                firstDayOfWeek: {
+                  type: "string",
+                  enum: ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+                  description: "First day of the week (default: sunday)"
+                },
+                index: {
+                  type: "string",
+                  enum: ["first", "second", "third", "fourth", "last"],
+                  description: "Week index in the month for relative monthly/yearly recurrence"
+                }
+              },
+              required: ["type", "interval"]
+            },
+            range: {
+              type: "object",
+              description: "The recurrence range",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["endDate", "noEnd", "numbered"],
+                  description: "The recurrence range type"
+                },
+                startDate: {
+                  type: "string",
+                  description: "Start date in YYYY-MM-DD format"
+                },
+                endDate: {
+                  type: "string",
+                  description: "End date in YYYY-MM-DD format (required if type is 'endDate')"
+                },
+                numberOfOccurrences: {
+                  type: "number",
+                  description: "Number of occurrences (required if type is 'numbered')"
+                }
+              },
+              required: ["type", "startDate"]
+            }
+          },
+          required: ["pattern", "range"]
         }
       },
       required: ["subject", "start", "end"]
