@@ -4,6 +4,7 @@
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { DEFAULT_TIMEZONE } = require('../config');
+const { resolveCalendarPath } = require('./calendar-utils');
 
 /**
  * Create event handler
@@ -11,7 +12,7 @@ const { DEFAULT_TIMEZONE } = require('../config');
  * @returns {object} - MCP response
  */
 async function handleCreateEvent(args) {
-  const { subject, start, end, attendees, body } = args;
+  const { subject, start, end, calendar, attendees, body } = args;
 
   if (!subject || !start || !end) {
     return {
@@ -26,8 +27,9 @@ async function handleCreateEvent(args) {
     // Get access token
     const accessToken = await ensureAuthenticated();
 
-    // Build API endpoint
-    const endpoint = `me/events`;
+    // Resolve calendar path and build events endpoint
+    const calendarPath = await resolveCalendarPath(accessToken, calendar);
+    const endpoint = `${calendarPath}/events`;
 
     // Request body
     const bodyContent = {

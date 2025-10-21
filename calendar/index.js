@@ -76,6 +76,10 @@ const calendarTools = [
           type: "string",
           description: "The end time of the event in ISO 8601 format"
         },
+        calendar: {
+          type: "string",
+          description: "Calendar name or ID (default: primary calendar). Use 'list-calendars' to see available calendars."
+        },
         attendees: {
           type: "array",
           items: {
