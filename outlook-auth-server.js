@@ -6,8 +6,8 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from .env file
-require('dotenv').config();
+// Load environment variables from .env and .env.local files
+require('dotenv-flow').config();
 
 // Log to console
 console.log('Starting Outlook Authentication Server');
