@@ -35,7 +35,7 @@ async function handleListEvents(args) {
       $orderby: 'start/dateTime',
       $select: config.CALENDAR_SELECT_FIELDS
     };
-    
+
     // Make API call
     const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams);
     
