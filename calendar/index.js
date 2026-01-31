@@ -2,7 +2,7 @@
  * Calendar module for Outlook MCP server
  */
 const handleListEvents = require('./list');
-const handleDeclineEvent = require('./decline');
+const handleRespondToEvent = require('./respond');
 const handleCreateEvent = require('./create');
 const handleCancelEvent = require('./cancel');
 const handleDeleteEvent = require('./delete');
@@ -25,23 +25,32 @@ const calendarTools = [
     handler: handleListEvents
   },
   {
-    name: "decline-event",
-    description: "Declines a calendar event",
+    name: "respond-to-event",
+    description: "Responds to a calendar event invitation (accept, decline, or tentatively accept)",
     inputSchema: {
       type: "object",
       properties: {
         eventId: {
           type: "string",
-          description: "The ID of the event to decline"
+          description: "The ID of the event to respond to"
+        },
+        response: {
+          type: "string",
+          description: "Your response to the invitation",
+          enum: ["accept", "decline", "tentative"]
         },
         comment: {
           type: "string",
-          description: "Optional comment for declining the event"
+          description: "Optional message to send to the organizer"
+        },
+        sendResponse: {
+          type: "boolean",
+          description: "Whether to notify the organizer of your response (default: true)"
         }
       },
-      required: ["eventId"]
+      required: ["eventId", "response"]
     },
-    handler: handleDeclineEvent
+    handler: handleRespondToEvent
   },
   {
     name: "create-event",
@@ -116,7 +125,7 @@ const calendarTools = [
 module.exports = {
   calendarTools,
   handleListEvents,
-  handleDeclineEvent,
+  handleRespondToEvent,
   handleCreateEvent,
   handleCancelEvent,
   handleDeleteEvent
