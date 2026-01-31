@@ -110,7 +110,12 @@ const emailTools = [
         },
         body: {
           type: "string",
-          description: "Email body content (can be plain text or HTML)"
+          description: "Email body content"
+        },
+        contentType: {
+          type: "string",
+          description: "Body content type: 'text' for plain text, 'html' for HTML (default: 'text')",
+          enum: ["text", "html"]
         },
         importance: {
           type: "string",

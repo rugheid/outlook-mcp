@@ -11,7 +11,7 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleSendEmail(args) {
-  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true } = args;
+  const { to, cc, bcc, subject, body, contentType = 'text', importance = 'normal', saveToSentItems = true } = args;
   
   // Validate required parameters
   if (!to) {
@@ -78,7 +78,7 @@ async function handleSendEmail(args) {
       message: {
         subject,
         body: {
-          contentType: body.includes('<html') ? 'html' : 'text',
+          contentType,
           content: body
         },
         toRecipients,
