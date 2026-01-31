@@ -133,8 +133,11 @@ function simulateGraphAPIResponse(method, path, data, queryParams) {
   } else if (method === 'POST' && path.includes('sendMail')) {
     // Simulate a successful email send
     return {};
+  } else if (method === 'POST' && (path.includes('/accept') || path.includes('/decline') || path.includes('/tentativelyAccept'))) {
+    // Simulate event response (accept, decline, tentative)
+    return {};
   }
-  
+
   // If we get here, we don't have a simulation for this endpoint
   console.error(`No simulation available for: ${method} ${path}`);
   return {};
