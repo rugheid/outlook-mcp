@@ -4,6 +4,7 @@
 const config = require('../config');
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
+const { resolveCalendarPath } = require('./calendar-utils');
 
 /**
  * List events handler
@@ -12,19 +13,26 @@ const { ensureAuthenticated } = require('../auth');
  */
 async function handleListEvents(args) {
   const count = Math.min(args.count || 10, config.MAX_RESULT_COUNT);
-  
+  const calendar = args.calendar;
+
   try {
     // Get access token
     const accessToken = await ensureAuthenticated();
-    
-    // Build API endpoint
-    let endpoint = 'me/events';
-    
+
+    // Resolve calendar path and build calendarView endpoint
+    const calendarPath = await resolveCalendarPath(accessToken, calendar);
+    const endpoint = `${calendarPath}/calendarView`;
+
+    // Calculate time range for calendarView (required parameters)
+    const startDateTime = new Date().toISOString();
+    const endDateTime = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
+
     // Add query parameters
     const queryParams = {
+      startDateTime,
+      endDateTime,
       $top: count,
       $orderby: 'start/dateTime',
-      $filter: `start/dateTime ge '${new Date().toISOString()}'`,
       $select: config.CALENDAR_SELECT_FIELDS
     };
     

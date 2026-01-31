@@ -2,15 +2,21 @@ const handleCreateEvent = require('../../calendar/create');
 const { DEFAULT_TIMEZONE } = require('../../config');
 const { callGraphAPI } = require('../../utils/graph-api');
 const { ensureAuthenticated } = require('../../auth');
+const { resolveCalendarPath } = require('../../calendar/calendar-utils');
 
 jest.mock('../../utils/graph-api');
 jest.mock('../../auth');
+jest.mock('../../calendar/calendar-utils');
 
 describe('handleCreateEvent', () => {
   beforeEach(() => {
     // Reset mocks before each test
     callGraphAPI.mockClear();
     ensureAuthenticated.mockClear();
+    resolveCalendarPath.mockClear();
+
+    // Default to primary calendar
+    resolveCalendarPath.mockResolvedValue('me/calendar');
   });
 
   test('should use default timezone when no timezone is provided', async () => {
@@ -152,6 +158,49 @@ describe('handleCreateEvent', () => {
 
     const result = await handleCreateEvent(args);
     expect(result.content[0].text).toBe("Error creating event: Graph API Error");
+  });
+
+  describe('calendar parameter', () => {
+    test('should use primary calendar when no calendar parameter is provided', async () => {
+      ensureAuthenticated.mockResolvedValue('dummy_access_token');
+      callGraphAPI.mockResolvedValue({ id: 'test_event_id' });
+
+      const args = {
+        subject: 'Test Event',
+        start: '2024-03-10T10:00:00',
+        end: '2024-03-10T11:00:00',
+      };
+
+      await handleCreateEvent(args);
+
+      expect(resolveCalendarPath).toHaveBeenCalledWith('dummy_access_token', undefined);
+
+      const [, , endpoint] = callGraphAPI.mock.calls[0];
+      expect(endpoint).toBe('me/calendar/events');
+    });
+
+    test('should use specified calendar when calendar parameter is provided', async () => {
+      const calendarName = 'Work Calendar';
+      const calendarPath = 'me/calendars/calendar-id-123';
+
+      resolveCalendarPath.mockResolvedValue(calendarPath);
+      ensureAuthenticated.mockResolvedValue('dummy_access_token');
+      callGraphAPI.mockResolvedValue({ id: 'test_event_id' });
+
+      const args = {
+        subject: 'Test Event',
+        start: '2024-03-10T10:00:00',
+        end: '2024-03-10T11:00:00',
+        calendar: calendarName,
+      };
+
+      await handleCreateEvent(args);
+
+      expect(resolveCalendarPath).toHaveBeenCalledWith('dummy_access_token', calendarName);
+
+      const [, , endpoint] = callGraphAPI.mock.calls[0];
+      expect(endpoint).toBe('me/calendars/calendar-id-123/events');
+    });
   });
 
 });

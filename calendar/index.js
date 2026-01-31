@@ -2,6 +2,7 @@
  * Calendar module for Outlook MCP server
  */
 const handleListEvents = require('./list');
+const handleListCalendars = require('./list-calendars');
 const handleDeclineEvent = require('./decline');
 const handleCreateEvent = require('./create');
 const handleCancelEvent = require('./cancel');
@@ -10,11 +11,25 @@ const handleDeleteEvent = require('./delete');
 // Calendar tool definitions
 const calendarTools = [
   {
+    name: "list-calendars",
+    description: "Lists all calendars in your Outlook account",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
+    },
+    handler: handleListCalendars
+  },
+  {
     name: "list-events",
     description: "Lists upcoming events from your calendar",
     inputSchema: {
       type: "object",
       properties: {
+        calendar: {
+          type: "string",
+          description: "Calendar name or ID (default: primary calendar). Use 'list-calendars' to see available calendars."
+        },
         count: {
           type: "number",
           description: "Number of events to retrieve (default: 10, max: 50)"
@@ -60,6 +75,10 @@ const calendarTools = [
         end: {
           type: "string",
           description: "The end time of the event in ISO 8601 format"
+        },
+        calendar: {
+          type: "string",
+          description: "Calendar name or ID (default: primary calendar). Use 'list-calendars' to see available calendars."
         },
         attendees: {
           type: "array",
@@ -116,6 +135,7 @@ const calendarTools = [
 module.exports = {
   calendarTools,
   handleListEvents,
+  handleListCalendars,
   handleDeclineEvent,
   handleCreateEvent,
   handleCancelEvent,
