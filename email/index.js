@@ -5,6 +5,8 @@ const handleListEmails = require('./list');
 const handleSearchEmails = require('./search');
 const handleReadEmail = require('./read');
 const handleSendEmail = require('./send');
+const handleSaveDraft = require('./save-draft');
+const handleSendDraft = require('./send-draft');
 const handleMarkAsRead = require('./mark-as-read');
 
 // Email tool definitions
@@ -149,6 +151,66 @@ const emailTools = [
       required: ["id"]
     },
     handler: handleMarkAsRead
+  },
+  {
+    name: "save-draft",
+    description: "Creates a new email draft or updates an existing one. Drafts are saved to the Drafts folder and can be reviewed in Outlook before sending.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "ID of an existing draft to update. Omit to create a new draft."
+        },
+        to: {
+          type: "string",
+          description: "Comma-separated list of recipient email addresses"
+        },
+        cc: {
+          type: "string",
+          description: "Comma-separated list of CC recipient email addresses"
+        },
+        bcc: {
+          type: "string",
+          description: "Comma-separated list of BCC recipient email addresses"
+        },
+        subject: {
+          type: "string",
+          description: "Email subject"
+        },
+        body: {
+          type: "string",
+          description: "Email body content"
+        },
+        contentType: {
+          type: "string",
+          description: "Body content type: 'text' for plain text, 'html' for HTML (default: 'text')",
+          enum: ["text", "html"]
+        },
+        importance: {
+          type: "string",
+          description: "Email importance (normal, high, low)",
+          enum: ["normal", "high", "low"]
+        }
+      },
+      required: []
+    },
+    handler: handleSaveDraft
+  },
+  {
+    name: "send-draft",
+    description: "Sends an existing email draft. Use list-emails with folder 'drafts' to find draft IDs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "ID of the draft to send"
+        }
+      },
+      required: ["id"]
+    },
+    handler: handleSendDraft
   }
 ];
 
@@ -158,5 +220,7 @@ module.exports = {
   handleSearchEmails,
   handleReadEmail,
   handleSendEmail,
+  handleSaveDraft,
+  handleSendDraft,
   handleMarkAsRead
 };

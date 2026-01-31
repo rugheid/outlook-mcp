@@ -133,8 +133,36 @@ function simulateGraphAPIResponse(method, path, data, queryParams) {
   } else if (method === 'POST' && path.includes('sendMail')) {
     // Simulate a successful email send
     return {};
+  } else if (method === 'POST' && path.includes('/send')) {
+    // Simulate sending a draft
+    return {};
+  } else if (method === 'POST' && path === 'me/messages') {
+    // Simulate creating a new draft
+    return {
+      id: `draft-${Date.now()}`,
+      subject: data?.subject || '',
+      toRecipients: data?.toRecipients || [],
+      ccRecipients: data?.ccRecipients || [],
+      bccRecipients: data?.bccRecipients || [],
+      body: data?.body || { contentType: 'text', content: '' },
+      importance: data?.importance || 'normal',
+      isDraft: true
+    };
+  } else if (method === 'PATCH' && path.includes('me/messages/')) {
+    // Simulate updating a draft
+    const draftId = path.split('/').pop();
+    return {
+      id: draftId,
+      subject: data?.subject || 'Updated Draft Subject',
+      toRecipients: data?.toRecipients || [],
+      ccRecipients: data?.ccRecipients || [],
+      bccRecipients: data?.bccRecipients || [],
+      body: data?.body || { contentType: 'text', content: '' },
+      importance: data?.importance || 'normal',
+      isDraft: true
+    };
   }
-  
+
   // If we get here, we don't have a simulation for this endpoint
   console.error(`No simulation available for: ${method} ${path}`);
   return {};
