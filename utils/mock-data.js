@@ -133,6 +133,9 @@ function simulateGraphAPIResponse(method, path, data, queryParams) {
   } else if (method === 'POST' && path.includes('sendMail')) {
     // Simulate a successful email send
     return {};
+  } else if (method === 'POST' && (path.includes('/accept') || path.includes('/decline') || path.includes('/tentativelyAccept'))) {
+    // Simulate event response (accept, decline, tentative)
+    return {};
   } else if (method === 'POST' && path.includes('/send')) {
     // Simulate sending a draft
     return {};
