@@ -22,7 +22,7 @@ const calendarTools = [
   },
   {
     name: "list-events",
-    description: "Lists upcoming events from your calendar",
+    description: "Lists events from your calendar within a date range. Useful for checking conflicts before accepting meeting invites.",
     inputSchema: {
       type: "object",
       properties: {
@@ -30,9 +30,17 @@ const calendarTools = [
           type: "string",
           description: "Calendar name or ID (default: primary calendar). Use 'list-calendars' to see available calendars."
         },
+        startDateTime: {
+          type: "string",
+          description: "Start of date range in ISO 8601 format (default: now)"
+        },
+        endDateTime: {
+          type: "string",
+          description: "End of date range in ISO 8601 format (default: 30 days from now)"
+        },
         count: {
           type: "number",
-          description: "Number of events to retrieve (default: 10, max: 50)"
+          description: "Maximum number of events to retrieve (default: 10, max: 50)"
         }
       },
       required: []
