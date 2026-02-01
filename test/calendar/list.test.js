@@ -14,32 +14,24 @@ describe('handleListEvents', () => {
     callGraphAPI.mockClear();
     ensureAuthenticated.mockClear();
     resolveCalendarPath.mockClear();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     ensureAuthenticated.mockResolvedValue(mockAccessToken);
+    resolveCalendarPath.mockResolvedValue('me/calendar');
   });
 
-  describe('calendarView endpoint', () => {
-    test('should use calendarView endpoint instead of events endpoint', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
-      callGraphAPI.mockResolvedValue({ value: [] });
+  afterEach(() => {
+    console.error.mockRestore();
+  });
 
-      await handleListEvents({ count: 10 });
-
-      const [, , endpoint] = callGraphAPI.mock.calls[0];
-      expect(endpoint).toBe('me/calendar/calendarView');
-    });
-
-    test('should include startDateTime and endDateTime parameters', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
+  describe('date range parameters', () => {
+    test('should use default date range when not specified', async () => {
       callGraphAPI.mockResolvedValue({ value: [] });
 
       const beforeCall = Date.now();
-      await handleListEvents({ count: 10 });
+      await handleListEvents({});
       const afterCall = Date.now();
 
       const [, , , , queryParams] = callGraphAPI.mock.calls[0];
-
-      expect(queryParams).toHaveProperty('startDateTime');
-      expect(queryParams).toHaveProperty('endDateTime');
 
       // Verify startDateTime is approximately now
       const startDate = new Date(queryParams.startDateTime);
@@ -52,23 +44,44 @@ describe('handleListEvents', () => {
       expect(Math.abs(endDate.getTime() - expectedEnd.getTime())).toBeLessThan(1000);
     });
 
-    test('should not include $filter parameter', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
+    test('should use custom startDateTime when provided', async () => {
       callGraphAPI.mockResolvedValue({ value: [] });
 
-      await handleListEvents({ count: 10 });
+      const customStart = '2024-03-15T14:00:00Z';
+      await handleListEvents({ startDateTime: customStart });
 
       const [, , , , queryParams] = callGraphAPI.mock.calls[0];
-      expect(queryParams).not.toHaveProperty('$filter');
+      expect(queryParams.startDateTime).toBe(new Date(customStart).toISOString());
+    });
+
+    test('should use custom endDateTime when provided', async () => {
+      callGraphAPI.mockResolvedValue({ value: [] });
+
+      const customEnd = '2024-03-15T15:00:00Z';
+      await handleListEvents({ endDateTime: customEnd });
+
+      const [, , , , queryParams] = callGraphAPI.mock.calls[0];
+      expect(queryParams.endDateTime).toBe(new Date(customEnd).toISOString());
+    });
+
+    test('should use both custom dates for conflict checking', async () => {
+      callGraphAPI.mockResolvedValue({ value: [] });
+
+      const customStart = '2024-03-15T14:00:00Z';
+      const customEnd = '2024-03-15T15:00:00Z';
+      await handleListEvents({ startDateTime: customStart, endDateTime: customEnd });
+
+      const [, , , , queryParams] = callGraphAPI.mock.calls[0];
+      expect(queryParams.startDateTime).toBe(new Date(customStart).toISOString());
+      expect(queryParams.endDateTime).toBe(new Date(customEnd).toISOString());
     });
   });
 
   describe('calendar parameter', () => {
     test('should use primary calendar when no calendar parameter is provided', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
       callGraphAPI.mockResolvedValue({ value: [] });
 
-      await handleListEvents({ count: 10 });
+      await handleListEvents({});
 
       expect(resolveCalendarPath).toHaveBeenCalledWith(mockAccessToken, undefined);
     });
@@ -78,7 +91,7 @@ describe('handleListEvents', () => {
       resolveCalendarPath.mockResolvedValue('me/calendars/calendar-id-123');
       callGraphAPI.mockResolvedValue({ value: [] });
 
-      await handleListEvents({ count: 10, calendar: calendarName });
+      await handleListEvents({ calendar: calendarName });
 
       expect(resolveCalendarPath).toHaveBeenCalledWith(mockAccessToken, calendarName);
 
@@ -87,72 +100,91 @@ describe('handleListEvents', () => {
     });
   });
 
-  describe('event formatting', () => {
-    test('should return formatted events when events are found', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
+  describe('calendarView endpoint', () => {
+    test('should use calendarView endpoint', async () => {
+      callGraphAPI.mockResolvedValue({ value: [] });
 
+      await handleListEvents({});
+
+      const [, , endpoint] = callGraphAPI.mock.calls[0];
+      expect(endpoint).toBe('me/calendar/calendarView');
+    });
+
+    test('should include required query parameters', async () => {
+      callGraphAPI.mockResolvedValue({ value: [] });
+
+      await handleListEvents({});
+
+      const [, , , , queryParams] = callGraphAPI.mock.calls[0];
+      expect(queryParams).toHaveProperty('startDateTime');
+      expect(queryParams).toHaveProperty('endDateTime');
+      expect(queryParams).toHaveProperty('$top');
+      expect(queryParams).toHaveProperty('$orderby', 'start/dateTime');
+    });
+  });
+
+  describe('event formatting', () => {
+    test('should return formatted events', async () => {
       const mockEvents = [
         {
           id: 'event1',
-          subject: 'Test Meeting',
-          start: { dateTime: '2024-03-10T10:00:00', timeZone: 'UTC' },
-          end: { dateTime: '2024-03-10T11:00:00', timeZone: 'UTC' },
-          location: { displayName: 'Conference Room' },
-          bodyPreview: 'Discuss project updates'
+          subject: 'Team Meeting',
+          start: { dateTime: '2024-03-15T14:00:00' },
+          end: { dateTime: '2024-03-15T15:00:00' },
+          location: { displayName: 'Room A' }
         },
         {
           id: 'event2',
-          subject: 'Weekly 1:1',
-          start: { dateTime: '2024-03-11T14:00:00', timeZone: 'UTC' },
-          end: { dateTime: '2024-03-11T15:00:00', timeZone: 'UTC' },
-          location: { displayName: 'Teams' },
-          bodyPreview: 'Regular sync'
+          subject: 'Project Review',
+          start: { dateTime: '2024-03-15T16:00:00' },
+          end: { dateTime: '2024-03-15T17:00:00' },
+          location: { displayName: 'Room B' }
         }
       ];
 
       callGraphAPI.mockResolvedValue({ value: mockEvents });
 
-      const result = await handleListEvents({ count: 10 });
+      const result = await handleListEvents({});
 
-      expect(result.content[0].text).toContain('Found 2 events');
-      expect(result.content[0].text).toContain('Test Meeting');
-      expect(result.content[0].text).toContain('Weekly 1:1');
+      expect(result.content[0].text).toContain('Found 2 event(s)');
+      expect(result.content[0].text).toContain('Team Meeting');
+      expect(result.content[0].text).toContain('Project Review');
       expect(result.content[0].text).toContain('event1');
       expect(result.content[0].text).toContain('event2');
     });
 
-    test('should return no events message when no events are found', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
+    test('should handle events without location', async () => {
+      const mockEvents = [
+        {
+          id: 'event1',
+          subject: 'Virtual Meeting',
+          start: { dateTime: '2024-03-15T14:00:00' },
+          end: { dateTime: '2024-03-15T15:00:00' },
+          location: {}
+        }
+      ];
+
+      callGraphAPI.mockResolvedValue({ value: mockEvents });
+
+      const result = await handleListEvents({});
+
+      expect(result.content[0].text).toContain('No location');
+    });
+
+    test('should return no events message with date range', async () => {
       callGraphAPI.mockResolvedValue({ value: [] });
 
-      const result = await handleListEvents({ count: 10 });
+      const result = await handleListEvents({
+        startDateTime: '2024-03-15T00:00:00Z',
+        endDateTime: '2024-03-15T23:59:59Z'
+      });
 
-      expect(result.content[0].text).toBe('No calendar events found.');
-    });
-  });
-
-  describe('error handling', () => {
-    test('should handle authentication errors', async () => {
-      ensureAuthenticated.mockRejectedValue(new Error('Authentication required'));
-
-      const result = await handleListEvents({ count: 10 });
-
-      expect(result.content[0].text).toContain('Authentication required');
-    });
-
-    test('should handle API errors', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
-      callGraphAPI.mockRejectedValue(new Error('API Error'));
-
-      const result = await handleListEvents({ count: 10 });
-
-      expect(result.content[0].text).toContain('Error listing events');
+      expect(result.content[0].text).toContain('No calendar events found');
     });
   });
 
   describe('count parameter', () => {
     test('should respect count parameter', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
       callGraphAPI.mockResolvedValue({ value: [] });
 
       await handleListEvents({ count: 25 });
@@ -161,8 +193,7 @@ describe('handleListEvents', () => {
       expect(queryParams.$top).toBe(25);
     });
 
-    test('should use default count of 10 when not specified', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
+    test('should default to 10 events', async () => {
       callGraphAPI.mockResolvedValue({ value: [] });
 
       await handleListEvents({});
@@ -171,14 +202,31 @@ describe('handleListEvents', () => {
       expect(queryParams.$top).toBe(10);
     });
 
-    test('should enforce maximum count of 50', async () => {
-      resolveCalendarPath.mockResolvedValue('me/calendar');
+    test('should cap at 50 events', async () => {
       callGraphAPI.mockResolvedValue({ value: [] });
 
       await handleListEvents({ count: 100 });
 
       const [, , , , queryParams] = callGraphAPI.mock.calls[0];
       expect(queryParams.$top).toBe(50);
+    });
+  });
+
+  describe('error handling', () => {
+    test('should handle authentication error', async () => {
+      ensureAuthenticated.mockRejectedValue(new Error('Authentication required'));
+
+      const result = await handleListEvents({});
+
+      expect(result.content[0].text).toContain('Authentication required');
+    });
+
+    test('should handle API error', async () => {
+      callGraphAPI.mockRejectedValue(new Error('API Error'));
+
+      const result = await handleListEvents({});
+
+      expect(result.content[0].text).toContain('Error listing events');
     });
   });
 });
