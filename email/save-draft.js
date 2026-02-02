@@ -19,14 +19,23 @@ function parseRecipients(emails) {
 }
 
 /**
- * Save draft email handler - creates a new draft or updates an existing one
+ * Save draft email handler - creates a new draft, updates an existing one, or creates a reply draft
  * @param {object} args - Tool arguments
  * @returns {object} - MCP response
  */
 async function handleSaveDraft(args) {
-  const { id, to, cc, bcc, subject, body, contentType = 'text', importance = 'normal' } = args;
+  const { id, replyToMessageId, replyAll = false, to, cc, bcc, subject, body, contentType = 'text', importance = 'normal' } = args;
 
-  // For new drafts, subject and body are recommended but not strictly required
+  // Validate conflicting parameters
+  if (id && replyToMessageId) {
+    return {
+      content: [{
+        type: "text",
+        text: "Cannot specify both 'id' (update existing draft) and 'replyToMessageId' (create reply). Use one or the other."
+      }]
+    };
+  }
+
   // For updates, at least one field should be provided
   if (id && !to && !cc && !bcc && !subject && !body && !args.contentType && !args.importance) {
     return {
@@ -41,60 +50,51 @@ async function handleSaveDraft(args) {
     // Get access token
     const accessToken = await ensureAuthenticated();
 
-    // Build the message object with only provided fields
-    const messageObject = {};
-
-    if (subject !== undefined) {
-      messageObject.subject = subject;
-    }
-
-    if (body !== undefined) {
-      messageObject.body = {
-        contentType,
-        content: body
-      };
-    }
-
-    const toRecipients = parseRecipients(to);
-    if (toRecipients.length > 0) {
-      messageObject.toRecipients = toRecipients;
-    }
-
-    const ccRecipients = parseRecipients(cc);
-    if (ccRecipients.length > 0) {
-      messageObject.ccRecipients = ccRecipients;
-    }
-
-    const bccRecipients = parseRecipients(bcc);
-    if (bccRecipients.length > 0) {
-      messageObject.bccRecipients = bccRecipients;
-    }
-
-    if (importance !== undefined) {
-      messageObject.importance = importance;
-    }
-
     let result;
     let action;
 
-    if (id) {
+    if (replyToMessageId) {
+      // Create a reply draft using the appropriate endpoint
+      const replyEndpoint = replyAll
+        ? `me/messages/${replyToMessageId}/createReplyAll`
+        : `me/messages/${replyToMessageId}/createReply`;
+
+      // createReply/createReplyAll returns a draft with threading headers set
+      result = await callGraphAPI(accessToken, 'POST', replyEndpoint, {});
+      action = 'created as reply';
+
+      // If user provided any overrides, patch the draft
+      const patchObject = buildMessageObject({ to, cc, bcc, subject, body, contentType, importance }, args);
+
+      if (Object.keys(patchObject).length > 0) {
+        result = await callGraphAPI(accessToken, 'PATCH', `me/messages/${result.id}`, patchObject);
+      }
+    } else if (id) {
       // Update existing draft
+      const messageObject = buildMessageObject({ to, cc, bcc, subject, body, contentType, importance }, args);
       result = await callGraphAPI(accessToken, 'PATCH', `me/messages/${id}`, messageObject);
       action = 'updated';
     } else {
-      // Create new draft
+      // Create new standalone draft
+      const messageObject = buildMessageObject({ to, cc, bcc, subject, body, contentType, importance }, args);
       result = await callGraphAPI(accessToken, 'POST', 'me/messages', messageObject);
       action = 'created';
     }
+
+    // Count recipients for response
+    const toCount = (result.toRecipients || []).length;
+    const ccCount = (result.ccRecipients || []).length;
+    const bccCount = (result.bccRecipients || []).length;
 
     const responseText = [
       `Draft ${action} successfully!`,
       '',
       `Draft ID: ${result.id}`,
       result.subject ? `Subject: ${result.subject}` : null,
-      toRecipients.length > 0 ? `To: ${toRecipients.length} recipient(s)` : null,
-      ccRecipients.length > 0 ? `CC: ${ccRecipients.length} recipient(s)` : null,
-      bccRecipients.length > 0 ? `BCC: ${bccRecipients.length} recipient(s)` : null,
+      toCount > 0 ? `To: ${toCount} recipient(s)` : null,
+      ccCount > 0 ? `CC: ${ccCount} recipient(s)` : null,
+      bccCount > 0 ? `BCC: ${bccCount} recipient(s)` : null,
+      replyToMessageId ? `Thread: linked to original message` : null,
       '',
       'Use send-draft with this ID to send the email, or find it in your Drafts folder in Outlook.'
     ].filter(Boolean).join('\n');
@@ -122,6 +122,50 @@ async function handleSaveDraft(args) {
       }]
     };
   }
+}
+
+/**
+ * Build a message object from provided fields
+ * Only includes fields that were explicitly provided
+ * @param {object} fields - The field values
+ * @param {object} args - Original args to check what was explicitly provided
+ * @returns {object} - Message object for Graph API
+ */
+function buildMessageObject(fields, args) {
+  const { to, cc, bcc, subject, body, contentType, importance } = fields;
+  const messageObject = {};
+
+  if (subject !== undefined && args.subject !== undefined) {
+    messageObject.subject = subject;
+  }
+
+  if (body !== undefined && args.body !== undefined) {
+    messageObject.body = {
+      contentType,
+      content: body
+    };
+  }
+
+  const toRecipients = parseRecipients(to);
+  if (toRecipients.length > 0) {
+    messageObject.toRecipients = toRecipients;
+  }
+
+  const ccRecipients = parseRecipients(cc);
+  if (ccRecipients.length > 0) {
+    messageObject.ccRecipients = ccRecipients;
+  }
+
+  const bccRecipients = parseRecipients(bcc);
+  if (bccRecipients.length > 0) {
+    messageObject.bccRecipients = bccRecipients;
+  }
+
+  if (importance !== undefined && args.importance !== undefined) {
+    messageObject.importance = importance;
+  }
+
+  return messageObject;
 }
 
 module.exports = handleSaveDraft;

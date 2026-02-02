@@ -154,21 +154,29 @@ const emailTools = [
   },
   {
     name: "save-draft",
-    description: "Creates a new email draft or updates an existing one. Drafts are saved to the Drafts folder and can be reviewed in Outlook before sending.",
+    description: "Creates a new email draft, updates an existing one, or creates a reply draft. Use replyToMessageId to create a properly threaded reply. Drafts are saved to the Drafts folder and can be reviewed in Outlook before sending.",
     inputSchema: {
       type: "object",
       properties: {
         id: {
           type: "string",
-          description: "ID of an existing draft to update. Omit to create a new draft."
+          description: "ID of an existing draft to update. Cannot be used with replyToMessageId."
+        },
+        replyToMessageId: {
+          type: "string",
+          description: "ID of a message to reply to. Creates a threaded reply draft with proper conversation linking. Cannot be used with id."
+        },
+        replyAll: {
+          type: "boolean",
+          description: "When true, reply to all recipients instead of just the sender. Only used with replyToMessageId. (default: false)"
         },
         to: {
           type: "string",
-          description: "Comma-separated list of recipient email addresses"
+          description: "Comma-separated list of recipient email addresses. When replying, overrides the auto-filled recipients."
         },
         cc: {
           type: "string",
-          description: "Comma-separated list of CC recipient email addresses"
+          description: "Comma-separated list of CC recipient email addresses. When replying, overrides the auto-filled CC recipients."
         },
         bcc: {
           type: "string",
@@ -176,11 +184,11 @@ const emailTools = [
         },
         subject: {
           type: "string",
-          description: "Email subject"
+          description: "Email subject. When replying, overrides the auto-generated 'RE: ...' subject."
         },
         body: {
           type: "string",
-          description: "Email body content"
+          description: "Email body content. When replying, replaces the auto-generated quoted content."
         },
         contentType: {
           type: "string",
